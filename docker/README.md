@@ -327,3 +327,13 @@ ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
  mysql -u root -p 12345678  
  GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;  
  flush privileges;
+<br/><br/>
+ # ZIPKIN
+
+ https://zipkin.io/pages/quickstart.html
+
+ ```
+ docker run -d -p 9411:9411 --network ecommerce-network --name zipkin openzipkin/zipkin
+ ```
+
+ docker logs zipkin 로그 확인
