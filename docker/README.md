@@ -293,3 +293,25 @@ docker run -d -p 8761:8761 --network ecommerce-network \
  ```
  
  config 서비스를 같은 네트워크에서 사용하기 때문에 config-servie:8888로 설정해줌으로써 호출할 수 있다.
+
+ # API Gateway Service
+
+ ## Dockerfile
+
+ ```
+ FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY target/apigateway-service-1.0.jar ApigatewayService.jar
+ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
+ ```
+
+ ## Docker build
+
+ ```
+ docker run -d -p 8000:8000 --network ecommerce-network \
+ -e "spring.cloud.config.uri=http://config-service:8888" \
+ -e "spring.rabbitmq.host=rabbitmq" \
+ -e "eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka/" \
+ --name apigateway-service \
+ jisu3268/apigateway-service:1.0
+ ```
