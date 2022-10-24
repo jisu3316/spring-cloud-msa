@@ -271,4 +271,25 @@ spring:
     }
 ]
 ```
-위에서 먼저 만든 rabbitmq가 178.18.0.2, config-service가 172.18.0.3 으로 IP가 할당된것을 확인할 수 있습니다.
+위에서 먼저 만든 rabbitmq가 178.18.0.2, config-service가 172.18.0.3 으로 IP가 할당된것을 확인할 수 있습니다.  
+docker logs {CONTAINER ID} 를 통해 컨테이너가 실행된 후 로그들을 확인할 수 있습니다.
+
+# Discovery Service
+## Dockerfile
+```
+FROM openjdk:17-ea-11-jdk-slim
+VOLUME /tmp
+COPY target/discoveryservice-1.0.jar DiscoveryService.jar
+ENTRYPOINT ["java","-jar","DiscoveryService.jar"]
+```
+
+## 도커 빌드 명령어
+```
+docker run -d -p 8761:8761 --network ecommerce-network \
+
+ -e "spring.cloud.config.uri=http://config-service:8888" \
+
+ --name discovery-service jisu3268/discovery-service:1.0
+ ```
+ 
+ config 서비스를 같은 네트워크에서 사용하기 때문에 config-servie:8888로 설정해줌으로써 호출할 수 있다.
