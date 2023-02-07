@@ -94,26 +94,26 @@ Spring Boot기반의 프레임워크입니다. 다시 말해 MSA구성을 지원
 - Spring Cloud GateWay  
 - Spring Cloud OpenFeign  
 
-### Centralized configuration management
+## Centralized configuration management
 #### Spring Cloud Config Server 
 Config Server 를 통하여 다양한 마이크로서비스에서 사용할 수 있는 어떤 정보들을 클라우드 컨피그라는 외부 저장소 환경설정 정보를 저장할 수 있습니다. 게이트 웨이 IP, 서버에 대한 토큰 정보 등 이런것들을 한곳의 저장소에 몰아넣고 나머지 마이크로 서비스에서 해당 값들을 참조해서 사용하는 방식이다.
 
-### Location transparency 
+## Location transparency 
 #### Naming Server(Netflix Eureka)
 서비스에 등록과 위치정보 확인, 검색과 같은 서비스를 위해서 Netflix Eureka 를 사용한다.
 
-### Load Distribution (Load Balancing) 
+## Load Distribution (Load Balancing) 
 ##### Ribbon(Client Side), Spring Cloud GateWay
 서버의 들어왔던 요청정보를 분산하기위한 용도로서 로드발란서이라던가 게이트웨이기능으로서 위 두가지를 사용한다.
 기존에는 Netflix zuul 이나 Ribbon 을 사용했지만 최근들어서는 Spring Cloud GateWay 를 사용하는 추세이므로 Spring Cloud GateWay를 사용하겠습니다.
 
-### Easier REST Clients
+## Easier REST Clients
 #### Feign Client  
 각각의 마이크로서비스가 통신을 위해서는 Rest Template 나 Feign Client 를 이용해서 데이터 통신을 하게 됩니다.
 
-### Visibility and monitoring (시각화와 모니터링)
+## Visibility and monitoring (시각화와 모니터링)
 #### Zipkin Distributed Tracing, Netflix API gateway
 
-### Fault Tolerance
+## Fault Tolerance
 #### Hystrix
 장애가 났을경우 빠르게 복구할수있는 회복성패턴이라는것이 있는데 넷플릭스에 있는 Hystrix 를 사용하겠습니다. 
