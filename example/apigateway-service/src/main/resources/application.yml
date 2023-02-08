@@ -3,8 +3,8 @@ server:
 
 eureka:
   client:
-    register-with-eureka: false
-    fetch-registry: false
+    register-with-eureka: true
+    fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka
 
@@ -21,7 +21,7 @@ spring:
             postLogger: true
       routes:
         - id: first-service # 아이디
-          uri: http://localhost:8081/ # 어디로 포워딩 될 것인지
+          uri: lb://MY-FIRST-SERVICE # 어디로 포워딩 될 것인지, eureka 에 등록된 이름
           predicates:
             - Path=/first-service/** # 조건절 사용자가 입력한 path 정보가 /first-service/** 어떤 요청 정보가 와도 위의 uri로 포워딩된다.
           filters:
@@ -29,7 +29,7 @@ spring:
 #            - AddResponseHeader=first-response, first-response-header2
             - CustomFilter
         - id: second-service
-          uri: http://localhost:8082/
+          uri: lb://MY-SECOND-SERVICE
           predicates:
             - Path=/second-service/**
           filters:

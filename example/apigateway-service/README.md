@@ -406,3 +406,5 @@ GatewayFilterChain은 PRE, POST Filter들을 연결시켜서 작업할 수 있�
 여기서 구현할 필터의 순서는 Global (PRE) -> Custom (PRE) -> Logging (PRE) -> Logging (POST) -> Custom (POST) -> Global (POST)
  이와 같이 적용을 할 것이기 때문에 Ordered.LOWEST_PRECEDENCE 을 통해 제일 마지막에 로깅을 찍을 수 있도록 합니다.
  
+
+application.yml 의 routes 등록해줄때 lb:{eureka에 등록된 서비스 이름} 으로 등록할 수 있다. -> 포트 번호나 도메인을 몰라도됨.
