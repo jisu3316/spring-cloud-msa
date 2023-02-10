@@ -20,6 +20,12 @@ public class UserDto {
 
     private String encryptedPwd;
 
+    public UserDto(String email, String name, String pwd) {
+        this.email = email;
+        this.name = name;
+        this.pwd = pwd;
+    }
+
     public UserDto(Long id, String email, String name, String userId) {
         this.id = id;
         this.email = email;

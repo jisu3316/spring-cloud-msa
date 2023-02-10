@@ -25,6 +25,6 @@ public class RequestUser {
     private String pwd;
 
     public UserDto toDto() {
-        return new UserDto(null, this.email, this.name, null);
+        return new UserDto(this.email, this.name, this.pwd);
     }
 }

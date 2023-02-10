@@ -20,6 +20,10 @@ spring:
             preLogger: true
             postLogger: true
       routes:
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/**
         - id: first-service # 아이디
           uri: lb://MY-FIRST-SERVICE # 어디로 포워딩 될 것인지, eureka 에 등록된 이름
           predicates:
