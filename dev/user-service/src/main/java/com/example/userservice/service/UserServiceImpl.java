@@ -2,13 +2,17 @@ package com.example.userservice.service;
 
 import com.example.userservice.domain.UserEntity;
 import com.example.userservice.dto.UserDto;
+import com.example.userservice.dto.response.ResponseOrder;
 import com.example.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,5 +35,25 @@ public class UserServiceImpl implements UserService {
         userEntity.encryptedPwd(passwordEncoder.encode(userDto.getPwd()));
 
         return UserDto.from(userRepository.save(userEntity));
+    }
+
+    @Override
+    public UserDto getUserByUserId(String userId) {
+        UserEntity userEntity = userRepository.findByUserId(userId);
+
+        if (userEntity == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
+
+        UserDto userDto = UserDto.from(userEntity);
+        List<ResponseOrder> orders = new ArrayList<>();
+        userDto.setOrders(orders);
+
+        return userDto;
+    }
+
+    @Override
+    public Iterable<UserEntity> getUserByAll() {
+        return userRepository.findAll();
     }
 }
