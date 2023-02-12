@@ -52,7 +52,6 @@ public class UserController {
         List<ResponseUser> result = new ArrayList<>();
         userList.forEach(v -> {
             result.add(ResponseUser.from(v));
-            result.add(ResponseUser.from(v));
         });
 
         return ResponseEntity.status(HttpStatus.OK).body(result);
@@ -60,8 +59,6 @@ public class UserController {
 
     @GetMapping("/users/{userId}")
     public ResponseEntity<ResponseUser> getUser(@PathVariable("userId") String userId) {
-        UserDto userDto = userService.getUserByUserId(userId);
-        ResponseUser returnValue = ResponseUser.from(userDto);
-        return ResponseEntity.status(HttpStatus.OK).body(returnValue);
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseUser.from(userService.getUserByUserId(userId)));
     }
 }
