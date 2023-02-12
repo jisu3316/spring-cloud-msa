@@ -1,0 +1,47 @@
+server:
+  port: 8000
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+spring:
+  application:
+    name: apigateway-service
+  cloud: # 리스트 형태로 여러개의 라우터 객체를 등록할 수 있다.
+    gateway:
+      default-filters:
+        - name: GlobalFilter
+          args:
+            baseMessage: Spring Cloud Gateway Global Filter
+            preLogger: true
+            postLogger: true
+      routes:
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/**
+        - id: first-service # 아이디
+          uri: lb://MY-FIRST-SERVICE # 어디로 포워딩 될 것인지, eureka 에 등록된 이름
+          predicates:
+            - Path=/first-service/** # 조건절 사용자가 입력한 path 정보가 /first-service/** 어떤 요청 정보가 와도 위의 uri로 포워딩된다.
+          filters:
+#            - AddRequestHeader=first-request, first-request-header2
+#            - AddResponseHeader=first-response, first-response-header2
+            - CustomFilter
+        - id: second-service
+          uri: lb://MY-SECOND-SERVICE
+          predicates:
+            - Path=/second-service/**
+          filters:
+#             - AddRequestHeader=second-request, second-request-header2
+#             - AddResponseHeader=second-response, second-response-header2
+            - name: CustomFilter
+            - name: LoggingFilter
+              args:
+                baseMessage: Hi, there.
+                preLogger: true
+                postLogger: true
