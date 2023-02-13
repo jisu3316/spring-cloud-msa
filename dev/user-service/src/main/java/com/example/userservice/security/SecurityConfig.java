@@ -21,9 +21,10 @@ public class SecurityConfig  {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable();
+        http.authorizeRequests(request -> request.antMatchers("/actuator/**").permitAll());
         http.authorizeRequests(request ->
                 request.antMatchers("/**")
-                                .hasIpAddress("172.30.1.15"));
+                        .hasIpAddress("172.30.1.15"));
         http.addFilter(getAuthenticationFilter());
 
         http.headers().frameOptions().disable();
