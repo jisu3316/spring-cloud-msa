@@ -11,6 +11,9 @@ eureka:
 spring:
   application:
     name: apigateway-service
+  config:
+    import:
+      - classpath:/bootstrap.yml
   cloud: # 리스트 형태로 여러개의 라우터 객체를 등록할 수 있다.
     gateway:
       default-filters:
@@ -49,6 +52,14 @@ spring:
             - RemoveRequestHeader=Cookie
             - RewritePath=/user-service/(?<segment>.*), /$\{segment}
             - AuthorizationHeaderFilter
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/actuator/**
+            - Method=GET,POST
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/user-service/(?<segment>.*), /$\{segment}
         - id: catalog-service
           uri: lb://CATALOG-SERVICE
           predicates:
@@ -78,5 +89,12 @@ spring:
                 baseMessage: Hi, there.
                 preLogger: true
                 postLogger: true
-token:
-  secret: spring_boot_application_com.example.userservice.kim_ji_su_2023.my_first_micro_service_secret_key
+
+#token:
+#  secret: spring_boot_application_com.example.userservice.kim_ji_su_2023.my_first_micro_service_secret_key
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health, beans, httptrace
