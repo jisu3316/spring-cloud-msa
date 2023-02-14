@@ -105,3 +105,36 @@ token:
 ### 클라이언트쪽에서 호출을 /user-service/**로 한다면 RewritePath로 인하여 user-service의 URL을 /user-serivce 를 제외하고 /users 만 선언해줘도 된다.
 ### 만약 인증처리가 불 필요하다고 생각하는 URI에 대해서는 filters에서 AuthorizationHeaderFilter를 제외시키면 된다.
 
+
+# Spring Cloud Config
+- 분산 시스템에서 서버, 클라이언트 구성에 필요한 설정 정보(application.yml)를 외부 시스템에서 관리
+- 하나의 중앙화 된 저장소에서 구성요소 관리 기능
+- 각 서비스를 다시 빌드하지 않고, 바로 적용 가능
+- 애플리케이션 배포 파이프라인을 통해 DEV, PROD 환경에 맞는 구성정보 사용
+
+## application.yml
+```yaml
+spring:
+  config:
+    import:
+      - classpath:/bootstrap.yml
+```
+위의 코드를 추가해야 bootstrap.yml을 읽을 수 있다.
+
+## bootstrap.yml
+```yaml
+spring:
+  cloud:
+    config:
+      uri: http://127.0.0.1:8888
+      name: ecommerce
+  profiles:
+    active: dev
+```
+
+bootstrap.yml 은 application.yml에서 생성한다.  
+가장 최상위 설정 파일이므로 application.yml 보다 먼저 인식 된다.  
+spring.cloud.config.uri = spring-cloud-config-server 의 uri이다.  
+spring.cloud.config.name = spring-cloud-config-server의 yml파일의 이름을 작성해준다.  
+spring.profiles.active = spring-cloud-config-server의 yml 환경을 작성해주면된다.  
+
