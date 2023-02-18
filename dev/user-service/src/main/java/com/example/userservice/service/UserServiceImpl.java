@@ -1,12 +1,13 @@
 package com.example.userservice.service;
 
+import com.example.userservice.feign.client.OrderServiceClient;
 import com.example.userservice.domain.UserEntity;
 import com.example.userservice.dto.UserDto;
 import com.example.userservice.dto.response.ResponseOrder;
 import com.example.userservice.repository.UserRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,12 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final OrderServiceClient orderServiceClient;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -61,7 +64,17 @@ public class UserServiceImpl implements UserService {
         }
 
         UserDto userDto = UserDto.from(userEntity);
-        List<ResponseOrder> orders = new ArrayList<>();
+
+        /* Using a feign client */
+        /* Feign exception handling */
+        List<ResponseOrder> orders = orderServiceClient.getOrders(userId);
+//        try {
+//            orders = orderServiceClient.getOrders(userId);
+//        } catch (FeignException e) {
+//            log.error(e.getMessage());
+//        }
+        /* ErrorDecoder */
+
         userDto.setOrders(orders);
 
         return userDto;

@@ -127,7 +127,7 @@ spring:
   cloud:
     config:
       uri: http://127.0.0.1:8888
-      name: ecommerce
+      name: user-service
   profiles:
     active: dev
 ```
@@ -137,4 +137,7 @@ bootstrap.yml 은 application.yml에서 생성한다.
 spring.cloud.config.uri = spring-cloud-config-server 의 uri이다.  
 spring.cloud.config.name = spring-cloud-config-server의 yml파일의 이름을 작성해준다.  
 spring.profiles.active = spring-cloud-config-server의 yml 환경을 작성해주면된다.  
+
+위와 같이 작성하게 되면 스프링 서버 기동시 bootstrap.yml 파일을 통해 user-servie.yml을 읽어오게된다.  
+그래서 공통으로 사용하는 정보들을 user-service.yml에 작성하면 공통코드를 줄일 수 있다.
 
