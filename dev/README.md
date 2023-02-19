@@ -141,3 +141,119 @@ spring.profiles.active = spring-cloud-config-server의 yml 환경을 작성해�
 위와 같이 작성하게 되면 스프링 서버 기동시 bootstrap.yml 파일을 통해 user-servie.yml을 읽어오게된다.  
 그래서 공통으로 사용하는 정보들을 user-service.yml에 작성하면 공통코드를 줄일 수 있다.
 
+# Apache kafka
+
+- ### Apache Software Foundation 의 Scalar 언어로 된 오픈 소스 메시지 브로커 프로젝트
+  ####  - Open Source Message Broker Project
+- ### 링크드인(Linked-in)에서 개발, 2011년 오픈 소스화
+  #### - 2014 년 11월 링크드인에서 Kafka를 개발하던 엔지니어들이 Kafka개발에 집중하기 위해 Confluent라는 회사 창립
+- ### 실시간 데이터 피드를 관리하기 위해 통일된 높은 처리량, 높은 처리량, 낮은 지연 시간을 지닌 플랫폼 제공
+- ### Apple, Netflix, Yelp, Kakao, New York Times, Cisco, Paypal, Hyperledger Fabric, Uber, Salesfoce.com 등이 사용
+
+### End-to-End 연결 방식의 아키텍처의 단점
+- 데이터 연동의 복잡성 증가(HW, 운영체제, 장애 등)
+- 서로 다른 데이터 Pipeline 연결 구조
+- 확장이 어려운 구조  
+###  Apache kafka 장점
+- 모든 시스템으로 실시간으로 전송하여 처리할 수 있는 시스템
+- 데이터가 많아지더라도 확장이 용이한 시스템
+- Producer(메세지를 보내는 쪽)/Consumer(메세지를 받는쪽) 분리
+- 메세지를 여러 Consumer에게 허용
+- 높은 처리량을 위한 메시지 최적화
+- Scale-out 가능
+- Eco-system
+
+## kafka Broker
+- ### 실행 된 Kafka 애플리케이션 서버
+- ### 3대 이상의 Broker Cluster 구성
+- ### Zookeeper 연동
+    #### - 역할: 메타데이터(Broker ID, Controller ID 등) 저장
+    #### - Controller 정보 저장
+- ### n개 Broker 중 1대는 Controller 기능 수행
+    #### - Controller 역할
+    - #####  각 Broker에게 담당 파티셔 할당 수행
+    - #####  Broker 정상 동작 모니터링 관리
+
+# kafka 설치 
+https://kafka.apache.org/downloads  
+kafka_2.13-3.4.0.tgz 다운 및 압축 해제 (tar xvf 파일명)  
+config 폴더에는 zookeeper를 실행 시킬 수 있는 zookeeper.properties 파일이 있고 Apache kafka를 실행 시킬 수 있는 server.properties 가 있다.  
+bin 폴더에는 주키퍼를 실행, 종료 할 수 있는 zookeeper-server-start.sh, zookeeper-server-stop.sh 파일이 있고
+카프카를 실행, 종료 시킬 수 있는 kafka-server-start.sh, kafka-server-stop.sh 가 있다.  
+카프카를 다운 받으면 윈도우와 맥 같은 파일을 다운받는데 윈도우는 bin/windows 폴더에 위와 같은 .bat 파일들이 있다.
+
+이 프로젝트에서의 카프카는 pub/sub 기능 구현과, kafka에 메세지를 보냄에 있어서 자바 라이브러리를 통해 데이터를 받을 수 있는(kafka client)와 데이터베이스의 값들이
+insert, update, delete 됐을때(변경사항이 생겼을때) 데이터베이스로부터 카프카가 변경된 데이터에 메세지를 가지고 그 값을 다른쪽에 있는 데이터베이스,
+서비스에 전달하는 기능(kafka connect)에 대해서 알아보겠습다.
+
+# Kafka Client
+
+Kafka와 데이터를 주고 받기 위해 사용하는 Java Library
+- https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients  
+Producer, Consumer, Admin, Stream 등 Kafka 관련 API 제공
+다양한 3rd party library 존쟤: C/C++, Node.js, Python, .NET 등
+- https://cwiki.apache.org/confluence/display/KAFKA/Clients
+
+# Kafka 서버 기동
+Zookeeper 및 Kafka 서버 구동
+- $KAFKA_HOME/bin/zookeeper-server-start.sh  
+- $KAFKA_HOME/config/zookeeper.properties
+- $KAFKA_HOME/bin/kafka-server-start.sh  
+- $KAFKA_HOME/config/server.properties
+- ./bin/zookeeper-server-start.sh ./config/zookeeper.properties  주키퍼 실행  
+- ./bin/kafka-server-start.sh ./config/server.properties 카프카 서버 실행
+
+Topic 생성
+- $KAFKA_HOME/bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092  --partitions 1
+
+Topic 목록 확인
+- $KAFKA_HOME/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+Topic 정보 확인
+- $KAFKA_HOME/bin/kafka-topics.sh --describe --topic quickstart-events --bootstrap-server localhost:9092
+
+# Kafka Producer/Consumer 테스트
+메세지 생산
+- $KAFKA_HOME/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic quickstart-events
+
+메세지 소비
+- $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic quickstart-events --from-beginning  
+
+위의 명령어에서 --from-beginning 옵션은 내가 참여하기전의 데이터까지 불러올 수 있다.
+
+# Kafka Connect
+- Kafka Connect를 통해 Data를 Import/Export 가능
+- 코드 없이 Configuration으로 데이터를 이동
+- Standalone mode, Distribution mode 지원
+  - RESTful API 통해 지원
+  - Stream 또는 Batch 형태로 데이터 전송 가능
+  - 커스텀 Connector를 통한 다양한 Plugin 제공(File, S3, Hive, Mysql, etc...)
+
+# Kafka Connect 설치
+### - curl -O http://packages.confluent.io/archive/5.5/confluent-community-5.5.2-2.12.tar.gz
+
+### - curl -O http://packages.confluent.io/archive/6.1/confluent-community-6.1.0.tar.gz
+이게 최신 버전
+### - tar xvf confluent-community-6.1.0.tar.gz
+
+### - cd  $KAFKA_CONNECT_HOME
+
+## Kafka Connect 설정(기본으로 설정)
+### - $KAFKA_CONNECT_HOME/config/connect-distributed.properties
+
+## Kafka Connect 실행
+### - ./bin/connect-distributed ./etc/kafka/connect-distributed.properties
+
+## Topic 목록 확인
+### - ./bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+## JDBC Connector 설정
+### - https://docs.confluent.io/5.5.1/connect/kafka-connect-jdbc/index.html
+  - Download and extract the ZIP file -> confluentinc-kafka-connect-jdbc-10.0.0.1zip 다운로드
+  - confluentinc-kafka-connect-jdbc-10.0.1.zip 
+
+### etc/kafka/connect-distributed.properties 파일 마지막에 아래 plugin 정보 추가
+- plugin.path=[confluentinc-kafka-connect-jdbc-10.0.1 폴더]
+
+### JdbcSourceConnector에서 MariaDB 사용하기 위해 mariadb 드라이버 복사
+-  ./share/java/kafka/ 폴더에 mariadb-java-client-2.7.2.jar  파일 복사

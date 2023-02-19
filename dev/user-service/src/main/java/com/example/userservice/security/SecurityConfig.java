@@ -20,11 +20,12 @@ public class SecurityConfig  {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        String IP = "172.30.1.15";
         http.csrf().disable();
-        http.authorizeRequests(request -> request.antMatchers("/actuator/**").permitAll());
+        http.authorizeRequests(request -> request.antMatchers("/actuator/**", "/error/**").permitAll());
         http.authorizeRequests(request ->
-                request.antMatchers("/**")
-                        .hasIpAddress("172.30.1.15"));
+                request.antMatchers("/**").access("hasIpAddress('" + IP + "')"));
+//                        .hasIpAddress("172.30.1.15"));
         http.addFilter(getAuthenticationFilter());
 
         http.headers().frameOptions().disable();
