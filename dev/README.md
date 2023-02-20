@@ -139,7 +139,14 @@ spring.cloud.config.name = spring-cloud-config-server의 yml파일의 이름을 
 spring.profiles.active = spring-cloud-config-server의 yml 환경을 작성해주면된다.  
 
 위와 같이 작성하게 되면 스프링 서버 기동시 bootstrap.yml 파일을 통해 user-servie.yml을 읽어오게된다.  
-그래서 공통으로 사용하는 정보들을 user-service.yml에 작성하면 공통코드를 줄일 수 있다.
+그래서 공통으로 사용하는 정보들을 user-service.yml에 작성하면 공통코드를 줄일 수 있다.  
+
+현재 각각의 마이크로서비스는 각각의 데이터베이스를 사용하고 있다. 그렇기 때문에 데이터의 동기화가 안되고 있다는 문제점이 있다.
+예를 들어 order-service 의 서버를 A,B 두대를 사용하고있다고 치자.  
+사용자 A가 주문을 두번 생성할때 주문생성 api를 두번 요청하면 api-gateway를 통해 로드밸렁싱이 된다.  
+그러므로 첫번째 요청은 order-service A의 DB에 저장, 두번째 요청은 order-service B의 DB에 저장되기떄문에 
+각각의 DB에 저장하게 되면 A라는 유저는 주문을 두번 했지만 조회를 하면 한번만 주문한것으로 나오게 된다.   
+이러한 데이터 동기화가 이루어지지 않는 문제가 있다. 이러한 문제를 kafka를 통해 해결하고자 한다.
 
 # Apache kafka
 
@@ -201,7 +208,8 @@ Zookeeper 및 Kafka 서버 구동
 - $KAFKA_HOME/bin/kafka-server-start.sh  
 - $KAFKA_HOME/config/server.properties
 - ./bin/zookeeper-server-start.sh ./config/zookeeper.properties  주키퍼 실행  
-- ./bin/kafka-server-start.sh ./config/server.properties 카프카 서버 실행
+- ./bin/kafka-server-start.sh ./config/server.properties 카프카 서버 실  
+
 
 Topic 생성
 - $KAFKA_HOME/bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092  --partitions 1
@@ -255,5 +263,182 @@ Topic 정보 확인
 ### etc/kafka/connect-distributed.properties 파일 마지막에 아래 plugin 정보 추가
 - plugin.path=[confluentinc-kafka-connect-jdbc-10.0.1 폴더]
 
-### JdbcSourceConnector에서 MariaDB 사용하기 위해 mariadb 드라이버 복사
--  ./share/java/kafka/ 폴더에 mariadb-java-client-2.7.2.jar  파일 복사
+### JdbcSourceConnector에서 mysql 사용하기 위해 mysql 드라이버 복사
+-  ./share/java/kafka/ 폴더에 mysql-java-client-2.7.2.jar  파일 복사
+
+
+# pom.xml
+```yaml
+   <!-- kafka     -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+    </dependencies>
+```
+
+# KafkaConsumerConfig
+```java
+package com.example.catalogservice.messagequeue;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+
+import java.util.HashMap;
+
+@EnableKafka
+@Configuration
+public class KafkaConsumerConfig {
+
+    @Bean
+    public ConsumerFactory<String, String> consumerFactory() {
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092"); //카프카 서버
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "consumerGroupId");      //카프카 토픽에 쌓여있는 토픽들을 그룹화할수있다.
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        return new DefaultKafkaConsumerFactory<>(properties);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory
+                = new ConcurrentKafkaListenerContainerFactory<>();
+        kafkaListenerContainerFactory.setConsumerFactory(consumerFactory());
+
+        return kafkaListenerContainerFactory;
+    }
+}
+
+```
+
+# KafkaConsumer
+```java
+package com.example.catalogservice.messagequeue;
+
+import com.example.catalogservice.doamin.CatalogEntity;
+import com.example.catalogservice.repository.CatalogRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class KafkaConsumer {
+
+    private final CatalogRepository catalogRepository;
+
+    // example-catalog-topic 에 메시지가 전달되면 호출되는 메서드이다.
+    @KafkaListener(topics = "example-catalog-topic")
+    public void updateQty(String kafkaMessage) {
+        log.info("Kafka Message : -> {}", kafkaMessage);
+
+        Map<Object, Object> map = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            map = mapper.readValue(kafkaMessage, new TypeReference<Map<Object, Object>>() {});
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+
+        CatalogEntity entity = catalogRepository.findByProductId((String) map.get("productId"));
+        if (entity != null) {
+            entity.modifyStock(entity.getStock() - (Integer) map.get("qty"));
+            catalogRepository.save(entity);
+        }
+    }
+}
+
+```
+
+
+# KafkaProducerConfig
+
+```java
+package com.example.orderservice.messagequeue;
+
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+
+import java.util.HashMap;
+
+@EnableKafka
+@Configuration
+public class KafkaProducerConfig {
+
+    @Bean
+    public ProducerFactory<String, String> producerFactory() {
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092"); //카프카 서버
+        properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+        return new DefaultKafkaProducerFactory<>(properties);
+    }
+
+    @Bean
+    public KafkaTemplate<String, String> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+}
+
+```
+
+# KafkaProducer
+
+```java
+package com.example.orderservice.messagequeue;
+
+import com.example.orderservice.dto.OrderDto;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class KafkaProducer {
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    public OrderDto send(String topic, OrderDto orderDto) {
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonInString = "";
+        try {
+            jsonInString = mapper.writeValueAsString(orderDto);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+
+        kafkaTemplate.send(topic, jsonInString);
+        log.info("Kafka Producer sent data from the Order microservice: {}", orderDto);
+
+        return orderDto;
+    }
+}
+
+```
