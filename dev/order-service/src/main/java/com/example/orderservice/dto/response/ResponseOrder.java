@@ -25,6 +25,6 @@ public class ResponseOrder {
     }
 
     public static ResponseOrder from(OrderEntity entity) {
-        return new ResponseOrder(entity.getProductId(), entity.getQty(), entity.getUnitPrice(), entity.getTotalPrice(), entity.getCreateAt(), entity.getOrderId());
+        return new ResponseOrder(entity.getProductId(), entity.getQty(), entity.getUnitPrice(), entity.getTotalPrice(), entity.getCreatedAt(), entity.getOrderId());
     }
 }
