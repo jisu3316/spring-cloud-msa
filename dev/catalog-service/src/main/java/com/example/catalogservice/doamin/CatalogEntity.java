@@ -30,4 +30,8 @@ public class CatalogEntity {
     @Column(nullable = false, updatable = false, insertable = false)
     @ColumnDefault(value = "CURRENT_TIMESTAMP")
     private Date createAt;
+
+    public void modifyStock(Integer modifyStock) {
+        this.stock = modifyStock;
+    }
 }

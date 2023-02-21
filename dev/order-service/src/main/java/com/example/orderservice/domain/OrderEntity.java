@@ -38,16 +38,16 @@ public class OrderEntity {
 
     @Column(nullable = false, updatable = false, insertable = false)
     @ColumnDefault(value = "CURRENT_TIMESTAMP")
-    private Date createAt;
+    private Date createdAt;
 
     @Builder
-    public OrderEntity(String productId, Integer qty, Integer unitPrice, Integer totalPrice, String userId, String orderId, Date createAt) {
+    public OrderEntity(String productId, Integer qty, Integer unitPrice, Integer totalPrice, String userId, String orderId, Date createdAt) {
         this.productId = productId;
         this.qty = qty;
         this.unitPrice = unitPrice;
         this.totalPrice = totalPrice;
         this.userId = userId;
         this.orderId = orderId;
-        this.createAt = createAt;
+        this.createdAt = createdAt;
     }
 }

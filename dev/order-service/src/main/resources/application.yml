@@ -11,8 +11,12 @@ spring:
         web-allow-others: true
       path: /h2-console
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb
+#    driver-class-name: org.h2.Driver
+#    url: jdbc:h2:mem:testdb
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/mydb
+    username: root
+    password: 12345678
   jpa:
     hibernate:
       ddl-auto: update

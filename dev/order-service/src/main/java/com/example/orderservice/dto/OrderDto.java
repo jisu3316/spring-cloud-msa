@@ -24,7 +24,7 @@ public class OrderDto {
         return new OrderDto(productId, qty, unitPrice, null, null, userId, null);
     }
     public static OrderDto from(OrderEntity entity) {
-        return new OrderDto(entity.getProductId(), entity.getQty(), entity.getUnitPrice(), entity.getTotalPrice(), entity.getOrderId(), entity.getUserId(), entity.getCreateAt());
+        return new OrderDto(entity.getProductId(), entity.getQty(), entity.getUnitPrice(), entity.getTotalPrice(), entity.getOrderId(), entity.getUserId(), entity.getCreatedAt());
     }
 
     public OrderEntity toEntity() {
