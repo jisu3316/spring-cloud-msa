@@ -442,3 +442,120 @@ public class KafkaProducer {
 }
 
 ```
+
+# Microservice 통신시 연쇄 오류 
+마이크로서비스는 각각의 서버를 가지고있다. (이 프로젝트에서는 유저서비스와 오더서비스처럼 나뉘어져있다.)  
+그렇기 때문에 유저정보를 조회시 주문 정보를 가져오게 되는데 이때 오더 서비스 서버가 죽어있다면 java.net.UnknownHostException: order-service 같은 에러가 발생하게 된다.  
+하지만 이렇게 되면 유저서비스 마저도 오류때문에 정상작동이 일어나지 않게 됩니다.  
+그렇기 때문에 마이서비스 통신시 연쇄 오류가 발생하게 됩니다. 이때 오더서비스는 죽어있더라도 유저정보만 정상적인 흐름으로 작동하고 오류가 발생한 흐름은
+막아주고 문제가 생긴 서비스를 다시 재사용할 수 있는 상태로 복구가 된다고 하면 이전에 사용했던것처럼 정상적인 흐름으로 바꿔주는 장치를 CircuitBreaker 라고 합니다.
+
+# CircuitBreaker
+- 장애가 발생하는 서비스에 반복적인 호출이 되지 못하게 차단
+- 특정 서비스가 정상적으로 동작하지 않을 경우 다른 기능으로 대체 수행 -> 장애 회피
+
+## Spring Cloud Netflix Hystrix
+```yaml
+<dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+
+
+@EnableCircuitBreaker
+
+feign:
+  hystrix:
+    enabled: true
+```
+2019년 이전에는 위와 같은 설정으로 넷플릭스에서 만든 Hystrix를 사용했지만 그 이후 부터는 더 이상 개발하지 않고 유지보수도 최근에는 더 이상 진행하지 않는다고 합니다.
+
+그래서 저는 Resilience4j 를 사용하기로 했습니다.
+
+# Resilience4j
+
+- resilience4j-circuitbreaker: Circuit breaking
+- resilience4j-ratelimiter: Rate limiting
+- resilience4j-bulkhead: Bulkheading
+- resilience4j-retry: Automatic retrying (sync and async)
+- resilience4j-timelimiter: Timeout handling
+- resilience4j-cache: Result caching
+- https://resilience4j.readme.io/docs/getting-started
+- https://github.com/resilience4j/resilience4j  
+ 
+위와 같은 라이브러리를 제공합니다.
+
+pom.xml
+```yaml
+<!-- rersilience4j   -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+        </dependency>
+```
+
+
+UserServiceImpl
+```java
+private final CircuitBreakerFactory circuitBreakerFactory;
+
+        /* Using a feign client */
+        /* Feign exception handling */
+        /* ErrorDecoder */
+        List<ResponseOrder> orders = orderServiceClient.getOrders(userId);
+
+        /* CircuitBreaker*/
+        CircuitBreaker circuitbreaker = circuitBreakerFactory.create("circuitbreaker");
+        List<ResponseOrder> orders = circuitbreaker.run(() -> orderServiceClient.getOrders(userId),
+        throwable -> new ArrayList<>());
+
+        userDto.setOrders(orders);
+```
+
+
+Resilience4j.config
+```java
+package com.example.userservice.config;
+
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.timelimiter.TimeLimiterConfig;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JCircuitBreakerFactory;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JConfigBuilder;
+import org.springframework.cloud.client.circuitbreaker.Customizer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.Duration;
+
+@Configuration
+public class Resilience4Config {
+
+  @Bean
+  public Customizer<Resilience4JCircuitBreakerFactory> globalCustomConfiguration() {
+    CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
+            .failureRateThreshold(4)              // CircuitBreaker를 열지 결정하는 failure rate threshold percentage , default : 50
+            .waitDurationInOpenState(Duration.ofMillis(1000))  // CircuitBreaker를 open 한 상태를 유지하는 지속시간을 의미, 이 기간 이후에 half-open 상태 default : 60초
+            .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)  // CircuitBreaker가 닫힐 때 통화 결과를 기록하는데 사용되는 슬라이딩 창의 유형을 구성, 카운트 기반 또는 시간 기반
+            .slidingWindowSize(2) // CircuitBreaker가  닫힐 때 호출 결과를 기록하는데 사용되는 슬라이딩 창의 크기를 구성 default : 100
+            .build();
+
+    TimeLimiterConfig timeLimiterConfig = TimeLimiterConfig.custom()
+            .timeoutDuration(Duration.ofSeconds(4)) // TimeLimiter 는 future supplier 의 time limit을 정하는 API default : 1초  오더 서비스에서 4초동안 응답이 없으면 문제로 간주하고 서킷브레이커를 open 한다.
+            .build();
+
+    return factory -> factory.configureDefault(id -> new Resilience4JConfigBuilder(id)
+            .timeLimiterConfig(timeLimiterConfig)
+            .circuitBreakerConfig(circuitBreakerConfig)
+            .build()
+    );
+  }
+}
+
+
+```
+
+userServiceImpl 에서는 기본 서킷브레이커 빈을 주입 받았지만 위와 같이 커스텀하게 만들어 빈을 등록하면 커스텀한 빈을 주입 받을 수 있다. 이 빈은 여러개 만들고 만들때  
+return factory -> factory.configure(builder -> builder.circuitBreakerConfig(circuitBreakerConfig)
+.timeLimiterConfig(timeLimiterConfig).build(),
+"circuitBreaker2");   
+이렇게 만들고 주입 받는 곳에서 circuitBreakerFactory.create("circuitbreaker2"); 을 통해 커스텀하게 사용 할 수 있다.
