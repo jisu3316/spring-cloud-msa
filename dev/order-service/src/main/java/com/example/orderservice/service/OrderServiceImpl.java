@@ -24,11 +24,11 @@ public class OrderServiceImpl implements OrderService {
         orderDto.setTotalPrice(orderDto.getQty() * orderDto.getUnitPrice());
 
         /* snd this order th the kafka*/
-        kafkaProducer.send("example-catalog-topic", orderDto);
-        orderProducer.send("orders", orderDto);
+//        kafkaProducer.send("example-catalog-topic", orderDto);
+//        orderProducer.send("orders", orderDto);
 
-//        return OrderDto.from(orderRepository.save(orderDto.toEntity()));
-        return orderDto;
+        return OrderDto.from(orderRepository.save(orderDto.toEntity()));
+//        return orderDto;
     }
 
     @Override
