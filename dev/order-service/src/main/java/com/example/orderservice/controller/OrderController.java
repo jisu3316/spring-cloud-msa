@@ -6,6 +6,7 @@ import com.example.orderservice.dto.request.RequestOrder;
 import com.example.orderservice.dto.response.ResponseOrder;
 import com.example.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/order-service")
 @RequiredArgsConstructor
@@ -34,12 +36,14 @@ public class OrderController {
 
     @GetMapping("/{userId}/orders")
     public ResponseEntity<List<ResponseOrder>> getOrder(@PathVariable("userId") String userId) {
+        log.info("Before retrieve orders data");
         Iterable<OrderEntity> orderByUserId = orderService.getOrderByUserId(userId);
 
         List<ResponseOrder> result = new ArrayList<>();
         orderByUserId.forEach(v -> {
             result.add(ResponseOrder.from(v));
         });
+        log.info("After retrieved orders data");
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 }
