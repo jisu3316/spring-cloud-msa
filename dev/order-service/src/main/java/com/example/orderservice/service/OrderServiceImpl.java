@@ -6,10 +6,12 @@ import com.example.orderservice.messagequeue.KafkaProducer;
 import com.example.orderservice.messagequeue.OrderProducer;
 import com.example.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
@@ -20,13 +22,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDto createOrder(OrderDto orderDto) {
+        log.info("Before add orders data");
         orderDto.setOrderId(UUID.randomUUID().toString());
         orderDto.setTotalPrice(orderDto.getQty() * orderDto.getUnitPrice());
 
         /* snd this order th the kafka*/
 //        kafkaProducer.send("example-catalog-topic", orderDto);
 //        orderProducer.send("orders", orderDto);
-
+        log.info("Before added orders data");
         return OrderDto.from(orderRepository.save(orderDto.toEntity()));
 //        return orderDto;
     }

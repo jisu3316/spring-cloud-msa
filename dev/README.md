@@ -1,4 +1,4 @@
-# Users Microservice
+# E-commerce Microservice
 
 ## Features
 -  신규 회원 등록
@@ -12,6 +12,7 @@
 - mac OS
 - Spring boot 2.7.8
 - Maven
+- Java 11
 
 ## Dependencies
 - Spring Web
@@ -21,6 +22,12 @@
 - Spring Boot DevTools
 - Lombok
 - Jwt
+- spring-boot-starter-actuator
+- spring-cloud-starter-bus-amqp
+- spring-cloud-starter-openfeign
+- spring-cloud-starter-circuitbreaker-resilience4j
+- spring-cloud-starter-sleuth
+- spring-cloud-starter-zipkin
 
 ## APIs
 
@@ -31,9 +38,15 @@
 | user-service    | 사용자 정보, 주문<br/>내역 조회 | /user-service/users/{userId}     | /users/{userId}         | GET               |
 | user-service    | 작동 상태 확인             | /user-service/users/health-check | /users/health-check     | GET               |
 | user-service    | 환영 메세지               | /user-service/users/welcome      | /users/welcome          | GET               |
+| user-service    | 로그인                  | /user-service/login              | /login                  | POST              |
 | catalog-service | 상품 목록 조회             | /catalog-service/catalogs        | /catalogs               | GET               |
-| order-service   | 사용자 별 상품 주문          | /order-service/{userId}/orders   | /{userId}/orders        | POST              |
+| order-service   | 사용자 별 상품 주문 생성       | /order-service/{userId}/orders   | /{userId}/orders        | POST              |
 | order-service   | 사용자 별 주문 내역 조회       | /order-service/{userId}/orders   | /{userId}/orders        | GET               |
+| config-service  | 암호화                  | /config-service/encrypt          | /encrypt                | GET               |
+| config-service  | 복호화                  | /config-service/decrypt          | /decrypt                | GET               |
+| config-service  | 값 변경 적용              | /actuator/refresh                | /actuator/refresh       | POST              |
+| config-service  | 값 변경 적용              | /actuator/busrefresh             | /actuator/busrefresh    | POST              |
+
 
 
 ## API-Gateway-Service
@@ -140,6 +153,71 @@ spring.profiles.active = spring-cloud-config-server의 yml 환경을 작성해�
 
 위와 같이 작성하게 되면 스프링 서버 기동시 bootstrap.yml 파일을 통해 user-servie.yml을 읽어오게된다.  
 그래서 공통으로 사용하는 정보들을 user-service.yml에 작성하면 공통코드를 줄일 수 있다.  
+
+
+# Spring - Cloud- Bus
+- 분산 시스템의 노드를 경량 메시지 브로커(Rabbit MQ) 연결
+- 상태 및 구성에 대한 변경 사항을 연결된 노드에게 전달(Broadcast)  
+
+위에서 cofing-service를 만들면서 공통적으로 사용하는 값 등을 설정하게 되었다. 이 값들이 변경되면 서버를 재기동하거나, Actuator refresh를 통해 
+변경된 값을 다시 가져올 수 있다. 하지만 마이크로서비스가 한 두개면 괜찮을지 몰라도 여러개, 수십, 수백개 되면 이 서버들을 하나씩 refresh를 해줘야한다는 일이 발생한다.
+이런걸 개선하기위한 방법이 spring cloud bus입니다. Config Server와 연결하여 변경된 정보가 있다면 각각의 마이크로 서비스에게 직접 데이터를 Push updates 해주는 방식으로 변경해보겠습니다.  
+이때 데이터가 갱신되었다는것을 각각의 마이크로 서비스에게 알려줄때 AMQP(Advanced Message Queuing Protocol)을 이용해서 알려주도록하겠습니다. 
+
+## AMQP (Advanced Message Queuing Protocol) 메세지 지향 미들웨어를 위한 개방형 표준 응용 계층 프로토콜
+- ### 메세지 지향
+- ### Erlang, RabbitMQ에서 사용
+- ### 메시지 브로커
+- ### 초당 20+ 메시지를 소비자에게 전달
+- ### 메시지 전달 보장, 시스템 간 메시지 전달
+- ### 브로커, 소비자 중심
+
+## Kafka 프로젝트
+- ### Apache Software Founation이 Scalar 언어로 개발한 오픈 소스 메시지 브로커 프로젝트
+- ### 분산형 스트리밍 플랫폼
+- ### 대요량의 데이터를 처리 가능한 메시징 시스템
+- ### 초당 100ㅏ+ 이상의 이벤트 처리
+- ### Pub/Sub, Topic에 메시지 전달
+- ### Ack를 기다리지 않고 전달 가능
+- ### 생상자 중심
+
+
+|                                | Kafka                | Pulsar                | RabbitMQ(Mirrored)          |
+|--------------------------------|----------------------|-----------------------|-----------------------------|
+| Peak Throughput(최고 처리량) (MB/s) | 605 MB/s             | 305 MB/s              | 38 MB/s                     |
+| p99 Latency (ms)               | 5 ms (200 MB/s load) | 25 ms (200 MB/s load) | 1 ms (reduced 30 MB/s load) |
+## Actuator bus-refresh Endpoint
+Spring Cloug Bus는 위에서 말한듯이 연결된 모드 노드에게 전달 되기 때문에 Cloud Bus에 연결된 서비스에서 /busrefresh 를 호출하게되면 자기하고 연결된 
+클라우드 버스에게 알려주고 클라우드 버스가 또 다른 노드들(마이크로서비스들)하테 전달하게됩니다.
+
+## Dependencies 추가
+```xml
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+ </dependency>
+
+<dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+```
+## application.yml
+```yaml
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health, beans, httptrace, busrefresh
+```
+위와 같이 설정한후 컨피그 서버의 정보를 변경하고 /busrefresh 로 요청하면 변경된 정볼르 가져오는것을 확인 할 수 있다.
+
 
 현재 각각의 마이크로서비스는 각각의 데이터베이스를 사용하고 있다. 그렇기 때문에 데이터의 동기화가 안되고 있다는 문제점이 있다.
 예를 들어 order-service 의 서버를 A,B 두대를 사용하고있다고 치자.  
@@ -559,3 +637,73 @@ return factory -> factory.configure(builder -> builder.circuitBreakerConfig(circ
 .timeLimiterConfig(timeLimiterConfig).build(),
 "circuitBreaker2");   
 이렇게 만들고 주입 받는 곳에서 circuitBreakerFactory.create("circuitbreaker2"); 을 통해 커스텀하게 사용 할 수 있다.
+
+
+# Microservice 분산 추적 - Zipkin, Spring  Cloud Sleuth
+## Zipkin
+위에서는 서킷 브레이커를 통해 연쇄적인 마이크로서비스의 오류를 예방할 수 있었습니다.  
+이번에는 마이크로서비스가 자체적인 독립 서비스만 작동하는것이 아니라 연쇄적으로 여러개의 서비스가 실행되기 때문에 그 과정에서 해당하는 요청 정보가 어떻게 실행이되고 
+어느단계를 거쳐서 어떤 마이크로 서비스로 이동이 되는지 이런것들을 추적할 수 있는 방법에 대해서 알아보겠습니다. 이러한 내용을 마이크로서비스의 분산 추적이라고 합니다.
+- https://zipkin.io/
+- Twitter에서 사용하는 분산 환경의 Timing 데이터 수집, 추적 시스템(오픈 소스)
+- Google Drapper에서 발전하였으며, 분산환경에서의 시스템 병목 현상 파악
+- Controller, Query Service, Databasem WebUI로 구성
+
+### Span
+- 하나의 요청에 사용되는 작업의 단위
+- 64 bit unique ID
+
+### Trace
+- 트리 구조로 이뤄진 Span 셋
+- 하나의 요청에 대한 같은 Trace ID 발급
+
+하나의 요청에 대해서 Trace ID 는 같다. Span ID 는 각 마이크로서비스와 통신할때 마다 다른 ID가 발급 된다.
+
+## Spring  Cloud Sleuth
+  - #### servlet filter
+  - #### rest template
+  - #### schedule actions
+  - #### message channels
+  - #### feign client
+- ### 위와 같은 스프링 부트 어플리케이션과 연동해서 가지고 있는 로그 데이터 값을 Zipkin과 서버측에다가 전달해주는 용도로 사용한다.
+- ### 요청 값에 따른 Trace ID, Span ID 부여
+- ### Trace와 Span Ids를 로그에 추가 가능
+
+# Zipkin server 설치
+## Docker
+docker run -d -p 9411:9411 openzipkin/zipkin
+
+## Java
+curl -sSl https://zipkin.io/quickstart.sh | bash -s
+java -jar zipkin.jar
+
+기본 포트 번호는 9411 이다.
+
+# Dependencies
+```xml
+        <!--  zipkin      -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-sleuth</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-zipkin -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zipkin</artifactId>
+            <version>2.2.8.RELEASE</version>
+        </dependency>
+```
+
+# application.yml
+```yaml
+spring:
+  application:
+    name: user-service
+  zipkin:
+    base-url: http://127.0.0.1:9411
+    enabled: true
+  sleuth:
+    sampler:
+      probability: 1.0
+```
+log가 찍히는데 [order-service TraceID SpanID] TraceID를 가지고 localhost:9411 에 오른쪽 상단에 붙여넣으면 요청에 대해 추적할 수 있다.
