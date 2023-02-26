@@ -707,3 +707,144 @@ spring:
       probability: 1.0
 ```
 log가 찍히는데 [order-service TraceID SpanID] TraceID를 가지고 localhost:9411 에 오른쪽 상단에 붙여넣으면 요청에 대해 추적할 수 있다.
+
+# Micrometer
+어플리케이션을 모니터링하기 위해서 각종 자료들을 수집하는 용도로 사용됩니다. 우리가 모니터링을 한다는 의미는 현재 CPU가 사용량이 얼마가 되었고, 메소드가 사용량이
+얼마나 되었고 네트워크 트래픽이 발생했고, 어느정도 사용량이 있는지, 사용자의 요청이 몇번 호출되었는지 이런 수치화 되어있는 좌표를 도식화시켜서 표현해줄수있는것들을
+모니터링도구라고 합니다. 모니터링 도구를 연동해줌으로써 현재 운영하고 있는 서버라던가, 시스템들의 가지고있는 부하라던가, 문제가 생겼던 시점등을 파악할 수 있습니다.
+Spring을 통해 마이크로서비스를 개발하고 있는데 마이크로서비스라는것 자체가 하나의 어플리케이션이 아니라 분산되어있는 여러개 독립적인 소프트웨어로 구성 되어 있기 때문에
+각종 서비스, 각종 서버들의 기능이 잘 작동되고 있는지 문제가 생긴곳이 있는지 병목현상이 있는지 잘 파악을 해서 그때그떄 자원을 할당해주는것이 필요합니다. 
+그래서 zipkin과 연동해 확인을 했었고 이제는 모니터링 시스템을 구축해야 합니다. 엔드포인트 Spring Framework5, Spring Boot 2 버전 부터는 스프링에서 발생하는 
+다양한 지표들을 Metics를 Micometer로 서비스를 제공하고 있습니다. 따른 추가적인 작업을 하지 않더라고 엔드포인트에서 발생했던 작업에 대해서 자동으로 수치를 기록돼서
+가지고 올 수 있습니다. 이러한 수집된 정보는 Prometheus 라던가 다양한 모니터링 시스템하고 연동되어서 시각화할때 유용하게 사용할 수 있습니다.
+- ### https://micrometer.io/
+- ### JVM 기반의 애플리케이션의 Metrics 제공
+- ### Spring Framework5, Spring Boot 2부터 Spring의 Metrics처리
+- ### Prometheus 등의 다양한 모니터링 시스템 지원
+
+# Timer
+- ### 짧은 지연 시간, 이벤트의 사용 빈도를 측정
+- ### 시계열로 이벤트의 시간, 호출 빈도 등을 제공
+- ### @Timed 제공
+
+```xml
+        <!-- Micrometer      -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+```
+
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health, beans, busrefresh, info, metrics, prometheus
+```
+actuator를 사용하게 되면 스프링에서 제공하는 다양한 지표, 어떤 데이터를 활용할 수 있습니다.  
+기존의 health, info, busrefresh등을 사용하고 있었습니다.
+이번에는 prometheus, metrics를 추가해줌으로써 현재 서비스가 사용할 수 있는 다양한 지표들이 어떤것들이 있는지 확인해보겠습니다.
+
+확인하고 싶은 엔드포인트에 @Timed(value="이름", longTask = true) 를 추가해줍니다.  
+/actuator/metrics 로 접속하면 위에 정의한 value="이름" 이 나오면서 지표로 사용할 수 있다고 확인 할 수 있습니다.  
+이제 사용자가 호출한 시점부터 호출된 정보가 이 마이크로미터에 기록되어지고 기록된 정보는 추후에 연결된 prometheus에서 자동으로 사용할 수 있게 됩니다.
+
+/actuator/prometheus 라는 엔드포인트로 접속하게 되면 해당 메소드가 몇번 호출되었는지 확인 할 수 있는 지표를 확인 할 수 있습니다.
+
+# Prometheus 
+- ### Metrics 를 수집하고 모니터링 및 알람에 사용되는 오픈소스 애플리케이션
+- ### 2016년부터 CNCF에서 관리되는 2번째 공식 프로젝트
+  - ### Level DB -> Time Series Database(TSDB)
+- ### Pull 방식의 구조와 다양한 Metric Exporter 제공
+- ### 시계열 DB에 Metircs 저장 -> 조회 가능 (Query)
+
+# Grafana
+- ### 데이터 시각화, 모니터링 및 분석을 위한 오픈소스 애플리케이션
+- ### 시계열 데이터를 시각화 하기 위한 대시보드 제공
+
+# Prometheus Grafana 설치
+- https://prometheus.io/download/
+- https://grafana.com/grafana/download
+
+## prometheus.yml
+### targer을 지정해줘야합니다. 정보를 수집하고자하는 액츄에이터의 주소를 입력해주면 됩니다.
+```yaml
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+# - "first_rules.yml"
+# - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: 'user-service'
+    scrape_interval: 15s
+    metrics_path: '/user-service/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:8000']
+  - job_name: 'order-service'
+    scrape_interval: 15s
+    metrics_path: '/order-service/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:8000']
+  - job_name: 'apigateway-service'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:8000']
+
+
+```
+타겟을 지정하는 방법은 다음과 같습니다. 다운 받은 prometheus.yml 을 열어 scrape_configs: 하위에 위와 같이 작성해주면 됩니다.  
+- job_name: 'user-service'  
+  scrape_interval: 15s  
+  metrics_path: '/user-service/actuator/prometheus'  (여기 정보를 수집한다.)
+  static_configs:
+  - targets: ['localhost:8080']  (spring-gateway 도메인)
+
+## prometheus 실행 방법  
+./prometheus --config.file=prometheus.yml
+
+## grafana 실행 방법  
+./bin/grafana-server
+
+# Grafana Dashboard
+- JVM(Micrometer)
+- Prometheus
+- Spring Cloud Gateway
+
+127.0.0.1:3000 번으로 접속하면 로그인 화면이 나온다. 기본 값 admin, admin으로 로그인한다.  
+DATA SOURCES -> Prometheus -> URL : 127.0.0.1:9000 입력 -> Dashboards 클릭 -> import 클릭  
+-> JVM(11892), Prometheus 2.0 Overview(3662), Spring Cloud Gateway(11506) 아이디 추가 -> Browse 클릭 후 확인  
+
+### Spring Cloud Gateway 클릭후 
+#### Total Requests Served -> Edit 버튼 클릭 후
+sum(spring_cloud_gateway_requests_seconds_count{job=~"apigateway-service"}) 이렇게 수정 한다.  
+spring_cloud_gateway_requests_seconds_count == /actuator/prometheus 에서 확인할 수 있는 지표 이름이다.
+#### Total Successful Requests Served
+sum(spring_cloud_gateway_requests_seconds_count{outcome="SUCCESSFUL", job=~"apigateway-service"})
+
+#### Total UnSuccessful Requests Served
+sum(spring_cloud_gateway_requests_seconds_count{outcome!="SUCCESSFUL", job=~"apigateway-service"})
