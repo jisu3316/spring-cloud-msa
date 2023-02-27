@@ -315,3 +315,15 @@ ENTRYPOINT ["java","-jar","ApigatewayService.jar"]
  --name apigateway-service \
  jisu3268/apigateway-service:1.0
  ```
+
+
+ # MYSQL
+
+ ```
+ docker run --platform linux/amd64  -p 3306:3306 --network ecommerce-network --name mysql -e MYSQL_ROOT_PASSWORD=12345678 -e MYSQL_DATABASE=mydb -e MYSQL_PASSWORD=12345678 -d mysql
+ ```
+
+ docker exec -it mysql bash   : 도커로 mysql 쉘 접속하기  
+ mysql -u root -p 12345678  
+ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;  
+ flush privileges;
